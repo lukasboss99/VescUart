@@ -20,7 +20,7 @@
 #include "buffer.h"
 #include <math.h>
 #include <stdbool.h>
-#include <string.h>  // Für memset in VescUart.cpp
+#include <string.h>  // For memset in VescUart.cpp
 
 void buffer_append_int16(uint8_t* buffer, int16_t number, int32_t *index) {
 	buffer[(*index)++] = number >> 8;
@@ -119,11 +119,11 @@ void buffer_append_float32_auto(uint8_t* buffer, float number, int32_t *index) {
 	buffer_append_uint32(buffer, res, index);
 }
 
-// REPARIERTE BUFFER-GET-FUNKTIONEN mit Boundary-Checks
+// FIXED BUFFER-GET-FUNCTIONS with Boundary Checks
 int16_t buffer_get_int16(const uint8_t *buffer, int32_t *index) {
-	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	// SAFETY CHECK: Check buffer boundaries and null pointer
 	if (!buffer || !index || (*index) < 0 || (*index) + 1 >= 1024) {
-		if (index) *index = 1024; // Setze an sicheres Ende
+		if (index) *index = 1024; // Set to safe end
 		return 0;
 	}
 	
@@ -134,7 +134,7 @@ int16_t buffer_get_int16(const uint8_t *buffer, int32_t *index) {
 }
 
 uint16_t buffer_get_uint16(const uint8_t *buffer, int32_t *index) {
-	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	// SAFETY CHECK: Check buffer boundaries and null pointer
 	if (!buffer || !index || (*index) < 0 || (*index) + 1 >= 1024) {
 		if (index) *index = 1024;
 		return 0;
@@ -147,7 +147,7 @@ uint16_t buffer_get_uint16(const uint8_t *buffer, int32_t *index) {
 }
 
 int32_t buffer_get_int32(const uint8_t *buffer, int32_t *index) {
-	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	// SAFETY CHECK: Check buffer boundaries and null pointer
 	if (!buffer || !index || (*index) < 0 || (*index) + 3 >= 1024) {
 		if (index) *index = 1024;
 		return 0;
@@ -162,7 +162,7 @@ int32_t buffer_get_int32(const uint8_t *buffer, int32_t *index) {
 }
 
 uint32_t buffer_get_uint32(const uint8_t *buffer, int32_t *index) {
-	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	// SAFETY CHECK: Check buffer boundaries and null pointer
 	if (!buffer || !index || (*index) < 0 || (*index) + 3 >= 1024) {
 		if (index) *index = 1024;
 		return 0;
@@ -180,24 +180,24 @@ float buffer_get_float16(const uint8_t *buffer, float scale, int32_t *index) {
     return (float)buffer_get_int16(buffer, index) / scale;
 }
 
-// KRITISCHE FUNKTION: buffer_get_float32 - hier passiert der Stack Overflow!
+// CRITICAL FUNCTION: buffer_get_float32 - here happens the stack overflow!
 float buffer_get_float32(const uint8_t *buffer, float scale, int32_t *index) {
-	// ERWEITERTE SICHERHEITSCHECKS gegen Buffer Overflow
+	// EXTENDED SAFETY CHECKS against buffer overflow
 	if (!buffer || !index) {
 		return 0.0f;
 	}
 	
-	// Zusätzliche Validierung der scale
+	// Additional validation of scale
 	if (scale == 0.0f || !isfinite(scale)) {
 		if (index) *index += 4; // Skip bytes to maintain protocol
 		return 0.0f;
 	}
 	
-	// Sichere int32 Extraktion mit Boundary-Checks
+	// Safe int32 extraction with boundary checks
     int32_t intValue = buffer_get_int32(buffer, index);
     float result = (float)intValue / scale;
     
-    // Validierung des Ergebnisses
+    // Validation of result
     if (!isfinite(result)) {
     	return 0.0f;
     }
@@ -206,7 +206,7 @@ float buffer_get_float32(const uint8_t *buffer, float scale, int32_t *index) {
 }
 
 float buffer_get_float32_auto(const uint8_t *buffer, int32_t *index) {
-	// SICHERE uint32 Extraktion mit Boundary-Checks
+	// SAFE uint32 extraction with boundary checks
 	uint32_t res = buffer_get_uint32(buffer, index);
 
 	int e = (res >> 23) & 0xFF;
@@ -225,7 +225,7 @@ float buffer_get_float32_auto(const uint8_t *buffer, int32_t *index) {
 
 	float result = ldexpf(sig, e);
 	
-	// Validierung des Ergebnisses
+	// Validation of result
 	if (!isfinite(result)) {
 		return 0.0f;
 	}
@@ -235,7 +235,7 @@ float buffer_get_float32_auto(const uint8_t *buffer, int32_t *index) {
 
 
 bool buffer_get_bool(const uint8_t *buffer, int32_t *index) {
-	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	// SAFETY CHECK: Check buffer boundaries and null pointer
 	if (!buffer || !index || (*index) < 0 || (*index) >= 1024) {
 		if (index) (*index)++;
 		return false;
@@ -265,7 +265,7 @@ void buffer_append_bool(uint8_t *buffer,bool value, int32_t *index) {
 
 }
 
-// NEUE EXPLIZIT SICHERE VERSIONEN mit Buffer-Längenkontrolle
+// NEW EXPLICITLY SAFE VERSIONS with buffer length control
 int16_t buffer_get_int16_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len) {
 	if (!buffer || !index || (*index) < 0 || (*index) + 1 >= buffer_len) {
 		if (index) *index = buffer_len;

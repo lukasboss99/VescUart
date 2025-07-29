@@ -51,10 +51,10 @@ class VescUart
 		 */
 		VescUart(uint32_t timeout_ms = 100);
 
-		/** Variabel to hold measurements returned from VESC */
+		/** Variable to hold measurements returned from VESC */
 		dataPackage data; 
 
-		/** Variabel to hold nunchuck values */
+		/** Variable to hold nunchuck values */
 		nunchuckPackage nunchuck; 
 
        /** Variable to hold firmware version */
@@ -183,10 +183,10 @@ class VescUart
 
 	private: 
 
-		/** Variabel to hold the reference to the Serial object to use for UART */
+		/** Variable to hold the reference to the Serial object to use for UART */
 		Stream* serialPort = NULL;
 
-		/** Variabel to hold the reference to the Serial object to use for debugging. 
+		/** Variable to hold the reference to the Serial object to use for debugging. 
 		  * Uses the class Stream instead of HarwareSerial */
 		Stream* debugPort = NULL;
 

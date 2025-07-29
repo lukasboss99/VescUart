@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 
-// SICHERE BUFFER-OPERATIONEN mit Boundary-Checks
+// SAFE BUFFER OPERATIONS with Boundary Checks
 void buffer_append_int16(uint8_t* buffer, int16_t number, int32_t *index);
 void buffer_append_uint16(uint8_t* buffer, uint16_t number, int32_t *index);
 void buffer_append_int32(uint8_t* buffer, int32_t number, int32_t *index);
@@ -31,7 +31,7 @@ void buffer_append_float16(uint8_t* buffer, float number, float scale, int32_t *
 void buffer_append_float32(uint8_t* buffer, float number, float scale, int32_t *index);
 void buffer_append_float32_auto(uint8_t* buffer, float number, int32_t *index);
 
-// ALTE VERSIONEN - mit Sicherheitschecks erweitert
+// OLD VERSIONS - extended with safety checks
 int16_t buffer_get_int16(const uint8_t *buffer, int32_t *index);
 uint16_t buffer_get_uint16(const uint8_t *buffer, int32_t *index);
 int32_t buffer_get_int32(const uint8_t *buffer, int32_t *index);
@@ -42,7 +42,7 @@ float buffer_get_float32_auto(const uint8_t *buffer, int32_t *index);
 bool buffer_get_bool(const uint8_t *buffer, int32_t *index);
 void buffer_append_bool(uint8_t *buffer,bool value, int32_t *index);
 
-// NEUE SICHERE VERSIONEN mit expliziter Buffer-Längenkontrolle
+// NEW SAFE VERSIONS with explicit buffer length control
 int16_t buffer_get_int16_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len);
 uint16_t buffer_get_uint16_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len);
 int32_t buffer_get_int32_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len);

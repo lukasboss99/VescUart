@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <string.h>  // Für memset und memcpy
+#include <string.h>  // For memset and memcpy
 #include "VescUart.h"
 
 VescUart::VescUart(uint32_t timeout_ms) : _TIMEOUT(timeout_ms) {
@@ -19,13 +19,13 @@ void VescUart::setDebugPort(Stream* port)
 	debugPort = port;
 }
 
-// SICHERE receiveUartMessage Funktion mit erweiterten Buffer-Checks
+// SAFE receiveUartMessage function with extended buffer checks
 int VescUart::receiveUartMessage(uint8_t * payloadReceived) {
 
 	// Messages <= 255 starts with "2", 2nd byte is length
 	// Messages > 255 starts with "3" 2nd and 3rd byte is length combined with 1st >>8 and then &0xFF
 
-	// SICHERHEITSCHECK: Validiere Parameter
+	// SAFETY CHECK: Validate parameters
 	if (serialPort == NULL || payloadReceived == NULL)
 		return -1;
 
@@ -35,7 +35,7 @@ int VescUart::receiveUartMessage(uint8_t * payloadReceived) {
 	uint8_t messageReceived[256];
 	uint16_t lenPayload = 0;
 	
-	// Initialisiere Buffer mit Nullen
+	// Initialize buffer with zeros
 	memset(messageReceived, 0, sizeof(messageReceived));
 	
 	uint32_t timeout = millis() + _TIMEOUT; // Defining the timestamp for timeout (100ms before timeout)
@@ -44,12 +44,12 @@ int VescUart::receiveUartMessage(uint8_t * payloadReceived) {
 
 		while (serialPort->available()) {
 
-			// KRITISCHER BOUNDARY-CHECK: Verhindere Buffer-Overflow!
+			// CRITICAL BOUNDARY-CHECK: Prevent buffer overflow!
 			if (counter >= sizeof(messageReceived) - 1) {
 				if (debugPort != NULL) {
 					debugPort->println("ERROR: Buffer overflow prevented!");
 				}
-				return -1; // Abbruch bei Buffer-Overflow-Gefahr
+				return -1; // Abort on buffer overflow risk
 			}
 
 			messageReceived[counter++] = serialPort->read();
@@ -62,7 +62,7 @@ int VescUart::receiveUartMessage(uint8_t * payloadReceived) {
 						endMessage = messageReceived[1] + 5; //Payload size + 2 for sice + 3 for SRC and End.
 						lenPayload = messageReceived[1];
 						
-						// SICHERHEITSCHECK: Validiere endMessage
+						// SAFETY CHECK: Validate endMessage
 						if (endMessage > sizeof(messageReceived) - 1) {
 							if (debugPort != NULL) {
 								debugPort->println("ERROR: Message too long, aborting!");
@@ -76,19 +76,19 @@ int VescUart::receiveUartMessage(uint8_t * payloadReceived) {
 						if( debugPort != NULL ){
 							debugPort->println("Message is larger than 256 bytes - not supported");
 						}
-						return -1; // Sicherer Abbruch
+						return -1; // Safe abort
 					break;
 
 					default:
 						if( debugPort != NULL ){
 							debugPort->println("Invalid start bit");
 						}
-						return -1; // Sicherer Abbruch bei ungültigem Start
+						return -1; // Safe abort on invalid start
 					break;
 				}
 			}
 
-			// DOPPELTE BOUNDARY-CHECKS für maximale Sicherheit
+			// DOUBLE BOUNDARY-CHECKS for maximum safety
 			if (counter >= sizeof(messageReceived) - 1) {
 				if (debugPort != NULL) {
 					debugPort->println("ERROR: Buffer boundary reached!");
@@ -166,24 +166,24 @@ bool VescUart::unpackPayload(uint8_t * message, int lenMes, uint8_t * payload) {
 }
 
 
-// REPARIERTE packSendPayload Funktion mit Buffer-Overflow-Schutz
+// FIXED packSendPayload function with buffer overflow protection
 int VescUart::packSendPayload(uint8_t * payload, int lenPay) {
 
-	// SICHERHEITSCHECKS: Verhindere Buffer-Overflow
+	// SAFETY CHECKS: Prevent buffer overflow
 	if (!payload || lenPay <= 0) {
-		return 0; // Sichere Rückkehr bei ungültigen Parametern
+		return 0; // Safe return on invalid parameters
 	}
 	
-	// CRITICAL: Begrenze Payload-Größe um Buffer-Overflow zu verhindern
-	if (lenPay > 240) { // Reserve 16 bytes für Header/CRC/Ende
-		return 0; // Payload zu groß - verwerfe!
+	// CRITICAL: Limit payload size to prevent buffer overflow
+	if (lenPay > 240) { // Reserve 16 bytes for header/CRC/end
+		return 0; // Payload too large - discard!
 	}
 
 	uint16_t crcPayload = crc16(payload, lenPay);
 	int count = 0;
-	uint8_t messageSend[256]; // Feste Größe
+	uint8_t messageSend[256]; // Fixed size
 	
-	// Initialisiere Buffer mit Nullen
+	// Initialize buffer with zeros
 	memset(messageSend, 0, sizeof(messageSend));
 	
 	if (lenPay <= 256)
@@ -198,7 +198,7 @@ int VescUart::packSendPayload(uint8_t * payload, int lenPay) {
 		messageSend[count++] = (uint8_t)(lenPay & 0xFF);
 	}
 
-	// SICHERE Payload-Kopie mit Boundary-Check
+	// SAFE payload copy with boundary check
 	if (count + lenPay + 3 <= sizeof(messageSend)) {
 		memcpy(messageSend + count, payload, lenPay);
 		count += lenPay;
@@ -207,7 +207,7 @@ int VescUart::packSendPayload(uint8_t * payload, int lenPay) {
 		messageSend[count++] = (uint8_t)(crcPayload & 0xFF);
 		messageSend[count++] = 3;
 	} else {
-		// Buffer würde überlaufen - Abbruch!
+		// Buffer would overflow - abort!
 		return 0;
 	}
 	
