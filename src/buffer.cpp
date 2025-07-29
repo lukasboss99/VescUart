@@ -20,6 +20,7 @@
 #include "buffer.h"
 #include <math.h>
 #include <stdbool.h>
+#include <string.h>  // Für memset in VescUart.cpp
 
 void buffer_append_int16(uint8_t* buffer, int16_t number, int32_t *index) {
 	buffer[(*index)++] = number >> 8;
@@ -118,7 +119,14 @@ void buffer_append_float32_auto(uint8_t* buffer, float number, int32_t *index) {
 	buffer_append_uint32(buffer, res, index);
 }
 
+// REPARIERTE BUFFER-GET-FUNKTIONEN mit Boundary-Checks
 int16_t buffer_get_int16(const uint8_t *buffer, int32_t *index) {
+	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	if (!buffer || !index || (*index) < 0 || (*index) + 1 >= 1024) {
+		if (index) *index = 1024; // Setze an sicheres Ende
+		return 0;
+	}
+	
 	int16_t res =	((uint16_t) buffer[*index]) << 8 |
 					((uint16_t) buffer[*index + 1]);
 	*index += 2;
@@ -126,6 +134,12 @@ int16_t buffer_get_int16(const uint8_t *buffer, int32_t *index) {
 }
 
 uint16_t buffer_get_uint16(const uint8_t *buffer, int32_t *index) {
+	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	if (!buffer || !index || (*index) < 0 || (*index) + 1 >= 1024) {
+		if (index) *index = 1024;
+		return 0;
+	}
+	
 	uint16_t res = 	((uint16_t) buffer[*index]) << 8 |
 					((uint16_t) buffer[*index + 1]);
 	*index += 2;
@@ -133,6 +147,12 @@ uint16_t buffer_get_uint16(const uint8_t *buffer, int32_t *index) {
 }
 
 int32_t buffer_get_int32(const uint8_t *buffer, int32_t *index) {
+	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	if (!buffer || !index || (*index) < 0 || (*index) + 3 >= 1024) {
+		if (index) *index = 1024;
+		return 0;
+	}
+	
 	int32_t res =	((uint32_t) buffer[*index]) << 24 |
 					((uint32_t) buffer[*index + 1]) << 16 |
 					((uint32_t) buffer[*index + 2]) << 8 |
@@ -142,6 +162,12 @@ int32_t buffer_get_int32(const uint8_t *buffer, int32_t *index) {
 }
 
 uint32_t buffer_get_uint32(const uint8_t *buffer, int32_t *index) {
+	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	if (!buffer || !index || (*index) < 0 || (*index) + 3 >= 1024) {
+		if (index) *index = 1024;
+		return 0;
+	}
+	
 	uint32_t res =	((uint32_t) buffer[*index]) << 24 |
 					((uint32_t) buffer[*index + 1]) << 16 |
 					((uint32_t) buffer[*index + 2]) << 8 |
@@ -154,11 +180,33 @@ float buffer_get_float16(const uint8_t *buffer, float scale, int32_t *index) {
     return (float)buffer_get_int16(buffer, index) / scale;
 }
 
+// KRITISCHE FUNKTION: buffer_get_float32 - hier passiert der Stack Overflow!
 float buffer_get_float32(const uint8_t *buffer, float scale, int32_t *index) {
-    return (float)buffer_get_int32(buffer, index) / scale;
+	// ERWEITERTE SICHERHEITSCHECKS gegen Buffer Overflow
+	if (!buffer || !index) {
+		return 0.0f;
+	}
+	
+	// Zusätzliche Validierung der scale
+	if (scale == 0.0f || !isfinite(scale)) {
+		if (index) *index += 4; // Skip bytes to maintain protocol
+		return 0.0f;
+	}
+	
+	// Sichere int32 Extraktion mit Boundary-Checks
+    int32_t intValue = buffer_get_int32(buffer, index);
+    float result = (float)intValue / scale;
+    
+    // Validierung des Ergebnisses
+    if (!isfinite(result)) {
+    	return 0.0f;
+    }
+    
+    return result;
 }
 
 float buffer_get_float32_auto(const uint8_t *buffer, int32_t *index) {
+	// SICHERE uint32 Extraktion mit Boundary-Checks
 	uint32_t res = buffer_get_uint32(buffer, index);
 
 	int e = (res >> 23) & 0xFF;
@@ -175,23 +223,31 @@ float buffer_get_float32_auto(const uint8_t *buffer, int32_t *index) {
 		sig = -sig;
 	}
 
-	return ldexpf(sig, e);
+	float result = ldexpf(sig, e);
+	
+	// Validierung des Ergebnisses
+	if (!isfinite(result)) {
+		return 0.0f;
+	}
+
+	return result;
 }
 
 
 bool buffer_get_bool(const uint8_t *buffer, int32_t *index) {
+	// SICHERHEITSCHECK: Prüfe Buffer-Grenzen und Null-Pointer
+	if (!buffer || !index || (*index) < 0 || (*index) >= 1024) {
+		if (index) (*index)++;
+		return false;
+	}
 	
-		if (buffer[*index] == 1)
-		{
-			(*index)++;
-			return true;
-		}
-		else
-		{
-			(*index)++;
-			return false;
-		}
-		
+	if (buffer[*index] == 1) {
+		(*index)++;
+		return true;
+	} else {
+		(*index)++;
+		return false;
+	}
 }
 
 void buffer_append_bool(uint8_t *buffer,bool value, int32_t *index) {
@@ -207,4 +263,112 @@ void buffer_append_bool(uint8_t *buffer,bool value, int32_t *index) {
 		(*index)++;
 	}
 
+}
+
+// NEUE EXPLIZIT SICHERE VERSIONEN mit Buffer-Längenkontrolle
+int16_t buffer_get_int16_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len) {
+	if (!buffer || !index || (*index) < 0 || (*index) + 1 >= buffer_len) {
+		if (index) *index = buffer_len;
+		return 0;
+	}
+	
+	int16_t res = ((uint16_t) buffer[*index]) << 8 | ((uint16_t) buffer[*index + 1]);
+	*index += 2;
+	return res;
+}
+
+uint16_t buffer_get_uint16_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len) {
+	if (!buffer || !index || (*index) < 0 || (*index) + 1 >= buffer_len) {
+		if (index) *index = buffer_len;
+		return 0;
+	}
+	
+	uint16_t res = ((uint16_t) buffer[*index]) << 8 | ((uint16_t) buffer[*index + 1]);
+	*index += 2;
+	return res;
+}
+
+int32_t buffer_get_int32_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len) {
+	if (!buffer || !index || (*index) < 0 || (*index) + 3 >= buffer_len) {
+		if (index) *index = buffer_len;
+		return 0;
+	}
+	
+	int32_t res = ((uint32_t) buffer[*index]) << 24 |
+				  ((uint32_t) buffer[*index + 1]) << 16 |
+				  ((uint32_t) buffer[*index + 2]) << 8 |
+				  ((uint32_t) buffer[*index + 3]);
+	*index += 4;
+	return res;
+}
+
+uint32_t buffer_get_uint32_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len) {
+	if (!buffer || !index || (*index) < 0 || (*index) + 3 >= buffer_len) {
+		if (index) *index = buffer_len;
+		return 0;
+	}
+	
+	uint32_t res = ((uint32_t) buffer[*index]) << 24 |
+				   ((uint32_t) buffer[*index + 1]) << 16 |
+				   ((uint32_t) buffer[*index + 2]) << 8 |
+				   ((uint32_t) buffer[*index + 3]);
+	*index += 4;
+	return res;
+}
+
+float buffer_get_float16_safe(const uint8_t *buffer, float scale, int32_t *index, int32_t buffer_len) {
+	return (float)buffer_get_int16_safe(buffer, index, buffer_len) / scale;
+}
+
+float buffer_get_float32_safe(const uint8_t *buffer, float scale, int32_t *index, int32_t buffer_len) {
+	if (scale == 0.0f || !isfinite(scale)) {
+		if (index && (*index) + 3 < buffer_len) *index += 4;
+		return 0.0f;
+	}
+	
+	int32_t intValue = buffer_get_int32_safe(buffer, index, buffer_len);
+	float result = (float)intValue / scale;
+	
+	if (!isfinite(result)) {
+		return 0.0f;
+	}
+	
+	return result;
+}
+
+float buffer_get_float32_auto_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len) {
+	uint32_t res = buffer_get_uint32_safe(buffer, index, buffer_len);
+
+	int e = (res >> 23) & 0xFF;
+	uint32_t sig_i = res & 0x7FFFFF;
+	bool neg = res & (1U << 31);
+
+	float sig = 0.0;
+	if (e != 0 || sig_i != 0) {
+		sig = (float)sig_i / (8388608.0 * 2.0) + 0.5;
+		e -= 126;
+	}
+
+	if (neg) {
+		sig = -sig;
+	}
+
+	float result = ldexpf(sig, e);
+	
+	if (!isfinite(result)) {
+		return 0.0f;
+	}
+
+	return result;
+}
+
+bool buffer_get_bool_safe(const uint8_t *buffer, int32_t *index, int32_t buffer_len) {
+	if (!buffer || !index || (*index) < 0 || (*index) >= buffer_len) {
+		if (index && (*index) < buffer_len) (*index)++;
+		return false;
+	}
+	
+	bool result = (buffer[*index] == 1);
+	(*index)++;
+	return result;
 }
